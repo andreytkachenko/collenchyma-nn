@@ -30,6 +30,14 @@ pub enum ConvForwardAlgo {
     ///
     /// Listed in cuDNN docs but cuDNN does not provide a implementation.
     Direct,
+    /// Compute the convolution using Winograd Transform approach
+    /// 
+    /// A reasonably sized workspace is needed to store intermediate results. The results are deterministic.
+    Winograd,
+    /// Compute the convolution using Winograd Transform approach
+    /// 
+    /// Significant workspace may be needed to store intermediate results. The results are deterministic. 
+    WinogradNonFused,
 }
 
 impl ConvForwardAlgo {
@@ -69,6 +77,14 @@ pub enum ConvBackwardFilterAlgo {
     ///
     /// The results are deterministic.
     FFT,
+    /// Compute the convolution as Fast-Fourier Transform with 32x32 tiles.
+    ///
+    /// Needs a significant memory workspace.
+    FFTTiling,
+    /// Compute the convolution using Winograd Transform approach
+    /// 
+    /// Significant workspace may be needed to store intermediate results. The results are deterministic. 
+    WinogradNonFused
 }
 
 impl ConvBackwardFilterAlgo {
@@ -110,6 +126,14 @@ pub enum ConvBackwardDataAlgo {
     ///
     /// The results are deterministic.
     FFTTiling,
+    /// Compute the convolution using Winograd Transform approach
+    /// 
+    /// A reasonably sized workspace is needed to store intermediate results. The results are deterministic.
+    Winograd,
+    /// Compute the convolution using Winograd Transform approach
+    /// 
+    /// Significant workspace may be needed to store intermediate results. The results are deterministic. 
+    WinogradNonFused,
 }
 
 impl ConvBackwardDataAlgo {

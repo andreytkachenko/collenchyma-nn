@@ -82,32 +82,33 @@
 //!
 
 //! | Operation            | CUDA               | OpenCL    | Native    |
-//! |---	               |---	                |---        |---        |
+//! |---	           |---	                |---        |---        |
 //! | Sigmoid  	           | { cuDNN v3, v4 }  	| -  	    | Rust  	|
-//! | SigmoidPointwise     | { cuDNN v3, v4 }  	| -  	    |   	    |
-//! | ReLU  	           | { cuDNN v3, v4 }   | -  	    | Rust 	    |
-//! | ReLUPointwise        | { cuDNN v3, v4 }  	| -  	    |   	    |
-//! | Tanh  	   	       | { cuDNN v3, v4 }   | - 	    | Rust      |
-//! | TanhPointwise        | { cuDNN v3, v4 }  	| -  	    |   	    |
-//! |   	   	           |  	                |  	        |           |
+//! | SigmoidPointwise     | { cuDNN v3, v4 }  	| -  	    |   	|
+//! | ReLU  	           | { cuDNN v3, v4 }   | -  	    | Rust 	|
+//! | ReLUPointwise        | { cuDNN v3, v4 }  	| -  	    |   	|
+//! | Tanh  	   	   | { cuDNN v3, v4 }   | - 	    | Rust      |
+//! | TanhPointwise        | { cuDNN v3, v4 }  	| -  	    |   	|
+//! |                      |                    |           |           |
 //! | Normalization (LRN)  | { cuDNN v3, v4 }   | - 	    | -         |
-//! |   	   	           |  	                |  	        |           |
+//! |                      |                    |           |           |
 //! | Convolution          | { cuDNN v3, v4 }   | - 	    | -         |
-//! |   	   	           |  	                |  	        |           |
+//! |                      |                    |           |           |
 //! | Softmax              | { cuDNN v3, v4 }   | - 	    | Rust      |
 //! | LogSoftmax           | { cuDNN v3, v4 }   | - 	    | Rust      |
-//! |   	   	           |  	                |  	        |           |
+//! |                      |                    |           |           |
 //! | Pooling Max          | { cuDNN v3, v4 }   | - 	    | -         |
 //! | Pooling Avg          | { cuDNN v3, v4 }   | - 	    | -         |
 //!
 //! [collenchyma]: https://github.com/autumnai/collenchyma
 //! [collenchyma-docs]: http://autumnai.github.io/collenchyma
 //! [blas-source]: https://en.wikipedia.org/wiki/Basic_Linear_Algebra_Subprograms
+
 #![cfg_attr(lint, feature(plugin))]
 #![cfg_attr(lint, plugin(clippy))]
 #![allow(dead_code)]
-#![deny(missing_docs,
-        missing_debug_implementations, missing_copy_implementations,
+#![deny(/*missing_docs,
+        */missing_debug_implementations, missing_copy_implementations,
         trivial_casts, trivial_numeric_casts,
         unused_import_braces, unused_qualifications)]
 

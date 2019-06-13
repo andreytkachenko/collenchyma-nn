@@ -4,7 +4,7 @@
 #![allow(unused_variables)]
 #![allow(unreachable_code)]
 
-use ::plugin::*;
+use crate::plugin::*;
 use co::prelude::*;
 use co::Error;
 use co::plugin::Error as PluginError;

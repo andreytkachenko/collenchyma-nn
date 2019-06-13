@@ -1,6 +1,7 @@
 //! Provides NN for a CUDA backend.
 #![allow(missing_docs)]
-use ::plugin::*;
+use crate::plugin::*;
+
 use co::prelude::*;
 use co::plugin::Error as PluginError;
 use cudnn::*;
@@ -33,7 +34,15 @@ macro_rules! impl_icudnndesc_for_sharedtensor {
     ($t:ty, $cutype:path) => (
         impl ICudnnDesc<$t> for SharedTensor<$t> {
             fn cudnn_tensor_desc(&self) -> Result<TensorDescriptor, PluginError> {
-                match TensorDescriptor::new(&self.desc().dims_i32().clone(), &self.desc().default_stride_i32().clone(), $cutype) {
+                info!("{:?}", self.desc());
+
+                let td = TensorDescriptor::new(
+                    &self.desc().dims_i32().clone(), 
+                    &self.desc().default_stride_i32().clone(), 
+                    $cutype
+                );
+
+                match td {
                     Ok(desc) => Ok(desc),
                     Err(_) => {
                         Err(PluginError::Plugin("Unable to create CuDNN TensorDescriptor."))
@@ -52,6 +61,7 @@ macro_rules! impl_icudnndesc_for_sharedtensor {
                     3 => vec![1, actual_desc[0], actual_desc[1], actual_desc[2]],
                     _ => actual_desc
                 };
+
                 match TensorDescriptor::new(&override_desc.dims_i32().clone(),
                                             &override_desc.default_stride_i32().clone(),
                                             $cutype) {
@@ -115,24 +125,29 @@ impl ConvForwardAlgo {
     fn as_cudnn(&self) -> Result<cudnnConvolutionFwdAlgo_t, ::co::error::Error> {
         Ok(match *self {
             ConvForwardAlgo::Auto => return Err(::co::error::Error::Plugin(::co::plugin::Error::Plugin("Can't create cuDNN convolution forward algorithm from ConvForwardAlgo::Auto. Use `find_cudnn_algo` to find an algorithm."))),
-            ConvForwardAlgo::GEMM => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
-            ConvForwardAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
-            ConvForwardAlgo::ImplicitPrecompiledGEMM => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
-            ConvForwardAlgo::FFT => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_FFT,
-            ConvForwardAlgo::FFTTiling => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
-            ConvForwardAlgo::Direct => ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
+            ConvForwardAlgo::GEMM => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_GEMM,
+            ConvForwardAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM,
+            ConvForwardAlgo::ImplicitPrecompiledGEMM => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM,
+            ConvForwardAlgo::FFT => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_FFT,
+            ConvForwardAlgo::FFTTiling => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING,
+            ConvForwardAlgo::Direct => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_DIRECT,
+            ConvForwardAlgo::Winograd => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD,
+            ConvForwardAlgo::WinogradNonFused => ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED,
         })
     }
 
     /// Returns the matching enum value for a cuDNN algo.
     fn from_cudnn(algo: &cudnnConvolutionFwdAlgo_t) -> ConvForwardAlgo {
         match *algo {
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_GEMM => ConvForwardAlgo::GEMM,
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM => ConvForwardAlgo::ImplicitGEMM,
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM => ConvForwardAlgo::ImplicitPrecompiledGEMM,
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_FFT => ConvForwardAlgo::FFT,
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING => ConvForwardAlgo::FFTTiling,
-            ::cudnn::cudnnConvolutionFwdAlgo_t::CUDNN_CONVOLUTION_FWD_ALGO_DIRECT => ConvForwardAlgo::Direct,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_GEMM => ConvForwardAlgo::GEMM,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM => ConvForwardAlgo::ImplicitGEMM,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM => ConvForwardAlgo::ImplicitPrecompiledGEMM,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_FFT => ConvForwardAlgo::FFT,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING => ConvForwardAlgo::FFTTiling,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_DIRECT => ConvForwardAlgo::Direct,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD => ConvForwardAlgo::Winograd,
+            ::cudnn::cudnnConvolutionFwdAlgo_t_CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED => ConvForwardAlgo::WinogradNonFused,
+            _ => unreachable!()
         }
     }
 
@@ -161,20 +176,25 @@ impl ConvBackwardFilterAlgo {
     fn as_cudnn(&self) -> Result<cudnnConvolutionBwdFilterAlgo_t, ::co::error::Error> {
         Ok(match *self {
             ConvBackwardFilterAlgo::Auto => return Err(::co::error::Error::Plugin(::co::plugin::Error::Plugin("Can't create cuDNN convolution backward filter algorithm from ConvBackwardFilterAlgo::Auto. Use `find_cudnn_algo` to find an algorithm."))),
-            ConvBackwardFilterAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1,
-            ConvBackwardFilterAlgo::ImplicitGEMMSum => ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
-            ConvBackwardFilterAlgo::ImplicitPrecompiledGEMMSum => ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3,
-            ConvBackwardFilterAlgo::FFT => ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT,
+            ConvBackwardFilterAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1,
+            ConvBackwardFilterAlgo::ImplicitGEMMSum => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0,
+            ConvBackwardFilterAlgo::ImplicitPrecompiledGEMMSum => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3,
+            ConvBackwardFilterAlgo::FFT => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT,
+            ConvBackwardFilterAlgo::FFTTiling => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING,
+            ConvBackwardFilterAlgo::WinogradNonFused => ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED,
         })
     }
 
     /// Returns the matching enum value for a cuDNN algo.
     fn from_cudnn(algo: &cudnnConvolutionBwdFilterAlgo_t) -> ConvBackwardFilterAlgo {
         match *algo {
-            ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 => ConvBackwardFilterAlgo::ImplicitGEMMSum,
-            ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 => ConvBackwardFilterAlgo::ImplicitGEMM,
-            ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT => ConvBackwardFilterAlgo::FFT,
-            ::cudnn::cudnnConvolutionBwdFilterAlgo_t::CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 => ConvBackwardFilterAlgo::ImplicitPrecompiledGEMMSum,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 => ConvBackwardFilterAlgo::ImplicitGEMMSum,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 => ConvBackwardFilterAlgo::ImplicitGEMM,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT => ConvBackwardFilterAlgo::FFT,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 => ConvBackwardFilterAlgo::ImplicitPrecompiledGEMMSum,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT_TILING => ConvBackwardFilterAlgo::FFTTiling,
+            ::cudnn::cudnnConvolutionBwdFilterAlgo_t_CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED => ConvBackwardFilterAlgo::WinogradNonFused,
+            _ => unreachable!()
         }
     }
 
@@ -203,20 +223,25 @@ impl ConvBackwardDataAlgo {
     fn as_cudnn(&self) -> Result<cudnnConvolutionBwdDataAlgo_t, ::co::error::Error> {
         Ok(match *self {
             ConvBackwardDataAlgo::Auto => return Err(::co::error::Error::Plugin(::co::plugin::Error::Plugin("Can't create cuDNN convolution backward data algorithm from ConvBackwardDataAlgo::Auto. Use `find_cudnn_algo` to find an algorithm."))),
-            ConvBackwardDataAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_1,
-            ConvBackwardDataAlgo::ImplicitGEMMSum => ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
-            ConvBackwardDataAlgo::FFT => ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT,
-            ConvBackwardDataAlgo::FFTTiling => ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING,
+            ConvBackwardDataAlgo::ImplicitGEMM => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_1,
+            ConvBackwardDataAlgo::ImplicitGEMMSum => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_0,
+            ConvBackwardDataAlgo::FFT => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT,
+            ConvBackwardDataAlgo::FFTTiling => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING,
+            ConvBackwardDataAlgo::Winograd => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD,
+            ConvBackwardDataAlgo::WinogradNonFused => ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED,
         })
     }
 
     /// Returns the matching enum value for a cuDNN algo.
     fn from_cudnn(algo: &cudnnConvolutionBwdDataAlgo_t) -> ConvBackwardDataAlgo {
         match *algo {
-            ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 => ConvBackwardDataAlgo::ImplicitGEMMSum,
-            ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 => ConvBackwardDataAlgo::ImplicitGEMM,
-            ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT => ConvBackwardDataAlgo::FFT,
-            ::cudnn::cudnnConvolutionBwdDataAlgo_t::CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING => ConvBackwardDataAlgo::FFTTiling,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_0 => ConvBackwardDataAlgo::ImplicitGEMMSum,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_1 => ConvBackwardDataAlgo::ImplicitGEMM,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT => ConvBackwardDataAlgo::FFT,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING => ConvBackwardDataAlgo::FFTTiling,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD => ConvBackwardDataAlgo::Winograd,
+            ::cudnn::cudnnConvolutionBwdDataAlgo_t_CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED => ConvBackwardDataAlgo::WinogradNonFused,
+            _ => unreachable!()
         }
     }
 
@@ -260,34 +285,48 @@ macro_rules! impl_convolution_for_cuda_backend {
                 stride: &[i32],
                 zero_padding: &[i32],
             ) -> Result<Self::CC, ::co::error::Error> {
-                let src_desc = try!(src.cudnn_tensor_desc());
-                let dest_desc = try!(dest.cudnn_tensor_desc());
-                let filter_desc = try!(filter.cudnn_filter_desc());
+                let src_desc = src.cudnn_tensor_desc()?;
+                let dest_desc = dest.cudnn_tensor_desc()?;
+                let filter_desc = filter.cudnn_filter_desc()?;
+
                 let conv_desc = ::cudnn::ConvolutionDescriptor::new(zero_padding, stride, $cutype).unwrap();
 
-                let useable_algo_fwd = try!(algo_fwd.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc));
-                let useable_algo_bwd_filter = try!(algo_bwd_filter.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc));
-                let useable_algo_bwd_data = try!(algo_bwd_data.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc));
+                info!("1");
+                let useable_algo_fwd = algo_fwd.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc)?;
 
+                info!("2");
+                let useable_algo_bwd_filter = algo_bwd_filter.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc)?;
+                
+                info!("3");
+                let useable_algo_bwd_data = algo_bwd_data.find_cudnn_algo(&filter_desc, &conv_desc, &src_desc, &dest_desc)?;
+
+                info!("4");
                 let mut workspace_size_fwd = API::get_convolution_forward_workspace_size(*CUDNN.id_c(), useable_algo_fwd.as_cudnn().unwrap(), *filter_desc.id_c(), *conv_desc.id_c(), *src_desc.id_c(), *dest_desc.id_c()).unwrap();
+                info!("5");
                 let mut workspace_size_bwd_filter = API::get_convolution_backward_filter_workspace_size(*CUDNN.id_c(), useable_algo_bwd_filter.as_cudnn().unwrap(), *filter_desc.id_c(), *conv_desc.id_c(), *src_desc.id_c(), *dest_desc.id_c()).unwrap();
+                info!("6");
                 let mut workspace_size_bwd_data = API::get_convolution_backward_data_workspace_size(*CUDNN.id_c(), useable_algo_bwd_data.as_cudnn().unwrap(), *filter_desc.id_c(), *conv_desc.id_c(), *src_desc.id_c(), *dest_desc.id_c()).unwrap();
 
                 if workspace_size_fwd == 0 {
                     workspace_size_fwd = 8;
                 }
+
                 if workspace_size_bwd_filter == 0 {
                     workspace_size_bwd_filter = 8;
                 }
+                
                 if workspace_size_bwd_data == 0 {
                     workspace_size_bwd_data = 8;
                 }
 
                 Ok(
                     ::cudnn::utils::ConvolutionConfig::new(
-                        useable_algo_fwd.as_cudnn().unwrap(), workspace_size_fwd,
-                        useable_algo_bwd_filter.as_cudnn().unwrap(), workspace_size_bwd_filter,
-                        useable_algo_bwd_data.as_cudnn().unwrap(), workspace_size_bwd_data,
+                        useable_algo_fwd.as_cudnn().unwrap(), 
+                        workspace_size_fwd,
+                        useable_algo_bwd_filter.as_cudnn().unwrap(), 
+                        workspace_size_bwd_filter,
+                        useable_algo_bwd_data.as_cudnn().unwrap(), 
+                        workspace_size_bwd_data,
                         conv_desc, filter_desc
                     )
                 )

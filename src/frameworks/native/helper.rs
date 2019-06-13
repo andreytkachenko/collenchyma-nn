@@ -1,5 +1,4 @@
 //! Provides useful macros for easier NN implementation for native.
-
 use co::plugin::numeric_helpers::Float;
 use co::memory::MemoryType;
 
@@ -71,33 +70,32 @@ pub fn tanh_grad<T: Float>(x: &T, dx: &T) -> T {
 
 macro_rules! impl_oconf_for_cc(($($t: ident), +) => (
     $(
-        impl<'a> NNOperationConfig<$t> for ::frameworks::native::helper::ConvolutionConfig { }
-        impl<'a> ConvolutionConfig<$t> for ::frameworks::native::helper::ConvolutionConfig { }
+        impl<'a> $crate::plugin::NNOperationConfig<$t> for $crate::frameworks::native::helper::ConvolutionConfig { }
+        impl<'a> $crate::plugin::ConvolutionConfig<$t> for $crate::frameworks::native::helper::ConvolutionConfig { }
     )+
 ));
 
 macro_rules! impl_oconf_for_clrn(($($t: ident), +) => (
     $(
-        impl NNOperationConfig<$t> for ::frameworks::native::helper::NormalizationConfig { }
+        impl $crate::plugin::NNOperationConfig<$t> for $crate::frameworks::native::helper::NormalizationConfig { }
     )+
 ));
 
 macro_rules! impl_oconf_for_pooling(($($t: ident), +) => (
     $(
-        impl NNOperationConfig<$t> for ::frameworks::native::helper::PoolingConfig { }
+        impl $crate::plugin::NNOperationConfig<$t> for $crate::frameworks::native::helper::PoolingConfig { }
     )+
 ));
 
-#[macro_export]
 macro_rules! impl_ops_sigmoid_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Sigmoid<$t> for $b {
+        impl $crate::plugin::Sigmoid<$t> for $b {
             fn sigmoid(
                 &self,
                 x: &mut ::co::tensor::SharedTensor<$t>,
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
                 match result.add_device(self.device()) { _ => () }
                 self.sigmoid_plain(x, result)
             }
@@ -108,8 +106,8 @@ macro_rules! impl_ops_sigmoid_for {
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
                 if let Some(input) = x.get(self.device()).unwrap().as_native() {
-                    let res = input.as_slice::<$t>().iter().map(::frameworks::native::helper::sigmoid);
-                    ::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
+                    let res = input.as_slice::<$t>().iter().map($crate::frameworks::native::helper::sigmoid);
+                    $crate::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
                     return Ok(());
                 }
                 Err(Error::Plugin(PluginError::Operation("Unable to execute Native sigmoid Forward.")))
@@ -122,9 +120,9 @@ macro_rules! impl_ops_sigmoid_for {
                 result: &mut ::co::tensor::SharedTensor<$t>,
                 result_diff: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
-                match x_diff.add_device(self.device()) { _ => try!(x_diff.sync(self.device())) }
-                match result.add_device(self.device()) { _ => try!(result.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
+                match x_diff.add_device(self.device()) { _ => x_diff.sync(self.device())? }
+                match result.add_device(self.device()) { _ => result.sync(self.device())? }
                 match result_diff.add_device(self.device()) { _ => () }
                 self.sigmoid_grad_plain(x, x_diff, result, result_diff)
             }
@@ -139,9 +137,11 @@ macro_rules! impl_ops_sigmoid_for {
                 if let Some(sig_data) = x.get(self.device()).unwrap().as_native() {
                     if let Some(sig_dx) = x_diff.get(self.device()).unwrap().as_native() {
                         let res = sig_data.as_slice::<$t>().iter()
-                        .zip(sig_dx.as_slice::<$t>().iter())
-                        .map(|(t, dt)| ::frameworks::native::helper::sigmoid_grad(t, dt));
-                        ::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+                            .zip(sig_dx.as_slice::<$t>().iter())
+                            .map(|(t, dt)| $crate::frameworks::native::helper::sigmoid_grad(t, dt));
+
+                        $crate::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+
                         return Ok(());
                     }
                 }
@@ -151,16 +151,16 @@ macro_rules! impl_ops_sigmoid_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_relu_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Relu<$t> for $b {
+        impl $crate::plugin::Relu<$t> for $b {
             fn relu(
                 &self,
                 x: &mut ::co::tensor::SharedTensor<$t>,
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
                 match result.add_device(self.device()) { _ => () }
                 self.relu_plain(x, result)
             }
@@ -171,8 +171,8 @@ macro_rules! impl_ops_relu_for {
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
                 if let Some(input) = x.get(self.device()).unwrap().as_native() {
-                    let res = input.as_slice::<$t>().iter().map(::frameworks::native::helper::relu);
-                    ::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
+                    let res = input.as_slice::<$t>().iter().map($crate::frameworks::native::helper::relu);
+                    $crate::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
                     return Ok(());
                 }
                 Err(Error::Plugin(PluginError::Operation("Unable to execute Native ReLU Forward.")))
@@ -185,9 +185,9 @@ macro_rules! impl_ops_relu_for {
                 result: &mut ::co::tensor::SharedTensor<$t>,
                 result_diff: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
-                match x_diff.add_device(self.device()) { _ => try!(x_diff.sync(self.device())) }
-                match result.add_device(self.device()) { _ => try!(result.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
+                match x_diff.add_device(self.device()) { _ => x_diff.sync(self.device())? }
+                match result.add_device(self.device()) { _ => result.sync(self.device())? }
                 match result_diff.add_device(self.device()) { _ => () }
                 self.relu_grad_plain(x, x_diff, result, result_diff)
             }
@@ -203,8 +203,8 @@ macro_rules! impl_ops_relu_for {
                     if let Some(dx) = x_diff.get(self.device()).unwrap().as_native() {
                         let res = input.as_slice::<$t>().iter()
                         .zip(dx.as_slice::<$t>().iter())
-                        .map(|(x, dx)| ::frameworks::native::helper::relu_grad(x, dx));
-                        ::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+                        .map(|(x, dx)| $crate::frameworks::native::helper::relu_grad(x, dx));
+                        $crate::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
                         return Ok(());
                     }
                 }
@@ -214,17 +214,17 @@ macro_rules! impl_ops_relu_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_tanh_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Tanh<$t> for $b {
+        impl $crate::plugin::Tanh<$t> for $b {
             #[inline]
             fn tanh(
                 &self,
                 x: &mut ::co::tensor::SharedTensor<$t>,
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
                 match result.add_device(self.device()) { _ => () }
                 self.tanh_plain(x, result)
             }
@@ -235,8 +235,8 @@ macro_rules! impl_ops_tanh_for {
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
                 if let Some(input) = x.get(self.device()).unwrap().as_native() {
-                    let res = input.as_slice::<$t>().iter().map(::frameworks::native::helper::tanh);
-                    ::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
+                    let res = input.as_slice::<$t>().iter().map($crate::frameworks::native::helper::tanh);
+                    $crate::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
                     return Ok(());
                 }
                 Err(Error::Plugin(PluginError::Operation("Unable to execute Native tanh Forward.")))
@@ -249,9 +249,9 @@ macro_rules! impl_ops_tanh_for {
                 result: &mut ::co::tensor::SharedTensor<$t>,
                 result_diff: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
-                match x_diff.add_device(self.device()) { _ => try!(x_diff.sync(self.device())) }
-                match result.add_device(self.device()) { _ => try!(result.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
+                match x_diff.add_device(self.device()) { _ => x_diff.sync(self.device())? }
+                match result.add_device(self.device()) { _ => result.sync(self.device())? }
                 match result_diff.add_device(self.device()) { _ => () }
                 self.tanh_grad_plain(x, x_diff, result, result_diff)
             }
@@ -267,8 +267,8 @@ macro_rules! impl_ops_tanh_for {
                     if let Some(dx) = x_diff.get(self.device()).unwrap().as_native() {
                         let res = input.as_slice::<$t>().iter()
                         .zip(dx.as_slice::<$t>().iter())
-                        .map(|(x, dx)| ::frameworks::native::helper::tanh_grad(x, dx));
-                        ::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+                        .map(|(x, dx)| $crate::frameworks::native::helper::tanh_grad(x, dx));
+                        $crate::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
                         return Ok(());
                     }
                 }
@@ -278,10 +278,10 @@ macro_rules! impl_ops_tanh_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_convolution_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Convolution<$t> for $b {
+        impl $crate::plugin::Convolution<$t> for $b {
             fn new_convolution_config(
                 &self,
                 src: &::co::tensor::SharedTensor<$t>,
@@ -340,16 +340,16 @@ macro_rules! impl_ops_convolution_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_softmax_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Softmax<$t> for $b {
+        impl $crate::plugin::Softmax<$t> for $b {
             fn softmax(
                 &self,
                 x: &mut ::co::tensor::SharedTensor<$t>,
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
                 match result.add_device(self.device()) { _ => () }
                 self.softmax_plain(x, result)
             }
@@ -366,7 +366,7 @@ macro_rules! impl_ops_softmax_for {
                         sum += exp;
                     }
                     let res = exps.iter().map(|t| t / sum);
-                    ::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
+                    $crate::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
                     return Ok(());
                 }
                 Err(Error::Plugin(
@@ -378,8 +378,8 @@ macro_rules! impl_ops_softmax_for {
                 x_diff: &mut ::co::tensor::SharedTensor<$t>,
                 result_diff: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
-                match x_diff.add_device(self.device()) { _ => try!(x_diff.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
+                match x_diff.add_device(self.device()) { _ => x_diff.sync(self.device())? }
                 match result_diff.add_device(self.device()) { _ => () }
                 self.softmax_grad_plain(x, x_diff, result_diff)
             }
@@ -400,7 +400,7 @@ macro_rules! impl_ops_softmax_for {
                         let res = sig_data_slice.iter()
                             .zip(sig_dx_slice.iter())
                             .map(|(t, dt)| t * (dt - dot));
-                        ::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+                        $crate::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
                         return Ok(());
                     }
                 }
@@ -412,16 +412,16 @@ macro_rules! impl_ops_softmax_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_log_softmax_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::LogSoftmax<$t> for $b {
+        impl $crate::plugin::LogSoftmax<$t> for $b {
             fn log_softmax(
                 &self,
                 x: &mut ::co::tensor::SharedTensor<$t>,
                 result: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
                 match result.add_device(self.device()) { _ => () }
                 self.log_softmax_plain(x, result)
             }
@@ -444,7 +444,7 @@ macro_rules! impl_ops_log_softmax_for {
 
                     let res = input.as_slice::<$t>().iter().map(|t| t - logsum);
 
-                    ::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
+                    $crate::frameworks::native::helper::write_to_memory(result.get_mut(self.device()).unwrap(), res);
                     return Ok(());
                 }
                 Err(Error::Plugin(
@@ -456,8 +456,8 @@ macro_rules! impl_ops_log_softmax_for {
                 x_diff: &mut ::co::tensor::SharedTensor<$t>,
                 result_diff: &mut ::co::tensor::SharedTensor<$t>
             ) -> Result<(), ::co::error::Error> {
-                match x.add_device(self.device()) { _ => try!(x.sync(self.device())) }
-                match x_diff.add_device(self.device()) { _ => try!(x_diff.sync(self.device())) }
+                match x.add_device(self.device()) { _ => x.sync(self.device())? }
+                match x_diff.add_device(self.device()) { _ => x_diff.sync(self.device())? }
                 match result_diff.add_device(self.device()) { _ => () }
                 self.log_softmax_grad_plain(x, x_diff, result_diff)
             }
@@ -479,7 +479,7 @@ macro_rules! impl_ops_log_softmax_for {
                             x_diff_val - x_val.exp() * sum
                         });
 
-                        ::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
+                        $crate::frameworks::native::helper::write_to_memory(result_diff.get_mut(self.device()).unwrap(), res);
                         return Ok(());
                     }
                 }
@@ -491,10 +491,10 @@ macro_rules! impl_ops_log_softmax_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_lrn_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::LRN<$t> for $b {
+        impl $crate::plugin::LRN<$t> for $b {
             fn new_lrn_config(
                 &self,
                 n: u32,
@@ -553,10 +553,10 @@ macro_rules! impl_ops_lrn_for {
     );
 }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! impl_ops_pooling_for {
     ($t:ident, $b:ty) => (
-        impl ::plugin::Pooling<$t> for $b {
+        impl $crate::plugin::Pooling<$t> for $b {
             fn new_pooling_config(
                 &self,
                 window: &[i32],
